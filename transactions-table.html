@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Link Generator</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+        }
+        .header {
+            position: relative;
+            background-color: #f0f0f0;
+            padding: 5px 10px; /* Reduced header padding */
+            margin-bottom: 15px; /* Added margin below header */
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 1.5em; /* Slightly reduced h1 font size, optional */
+            margin-bottom: 5px; /* Reduced margin below h1 */
+        }
+        .login-button {
+            position: absolute;
+            top: 5px; /* Adjusted top position */
+            right: 10px;
+            padding: 6px 12px; /* Slightly smaller button padding */
+            font-size: 0.9em; /* Smaller button font size, optional */
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .login-button:hover {
+            background-color: #45a049;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        input[type="text"], input[type="date"], button {
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>API Link Generator</h1>
+        <a href="https://one-digitalservice.ch/login/login" target="_blank" class="login-button">Login</a>
+    </div>
+
+    <div>
+        <label for="cardId">Card ID:</label>
+        <input type="text" id="cardId" placeholder="Enter Card ID">
+    </div>
+
+    <div>
+        <label for="dateFrom">Date From:</label>
+        <input type="date" id="dateFrom">
+    </div>
+
+    <div>
+        <label for="dateTo">Date To:</label>
+        <input type="date" id="dateTo">
+    </div>
+
+    <button onclick="generateLinks()">Generate Links</button>
+
+    <h2>Generated Links</h2>
+    <table id="linkTable">
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th>Link</th>
+            </tr>
+        </thead>
+        <tbody id="linkTableBody">
+            <!-- Links will be generated here -->
+        </tbody>
+    </table>
+
+    <script>
+        function generateLinks() {
+            const cardId = document.getElementById("cardId").value;
+            const dateFromInput = document.getElementById("dateFrom").value;
+            const dateToInput = document.getElementById("dateTo").value;
+            const linkTableBody = document.getElementById("linkTableBody");
+
+            // Clear previous links
+            linkTableBody.innerHTML = "";
+
+            if (!cardId || !dateFromInput || !dateToInput) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            const startDate = new Date(Date.UTC(new Date(dateFromInput).getFullYear(), new Date(dateFromInput).getMonth(), new Date(dateFromInput).getDate()));
+            const endDate = new Date(Date.UTC(new Date(dateToInput).getFullYear(), new Date(dateToInput).getMonth(), new Date(dateToInput).getDate()));
+
+
+            console.log("startDate:", startDate);
+            console.log("endDate:", endDate);
+
+            if (startDate > endDate) {
+                alert("Date From cannot be after Date To.");
+                return;
+            }
+
+            let currentDate = new Date(startDate);
+
+            while (currentDate <= endDate) {
+                const year = currentDate.getUTCFullYear();
+                const month = currentDate.getUTCMonth();
+
+                const monthStartDate = new Date(Date.UTC(year, month, 1));
+                const monthEndDate = new Date(Date.UTC(year, month + 1, 0));
+
+                console.log("monthStartDate:", monthStartDate);
+                console.log("monthEndDate:", monthEndDate);
+
+                let apiDateFrom, apiDateTo;
+
+                if (startDate > monthStartDate && startDate <= monthEndDate) {
+                    apiDateFrom = new Date(startDate);
+                } else if (startDate <= monthStartDate && endDate >= monthEndDate) {
+                    apiDateFrom = monthStartDate;
+                } else if (startDate <= monthStartDate && endDate < monthEndDate && endDate >= monthStartDate) {
+                    apiDateFrom = monthStartDate;
+                }
+                 else {
+                    apiDateFrom = monthStartDate;
+                }
+
+
+                if (endDate < monthEndDate && endDate >= monthStartDate) {
+                    apiDateTo = new Date(endDate);
+                } else if (startDate <= monthStartDate && endDate >= monthEndDate) {
+                    apiDateTo = monthEndDate;
+                } else if (startDate > monthStartDate && startDate <= monthEndDate && endDate >= monthEndDate) {
+                    apiDateTo = monthEndDate;
+                }
+                else {
+                    apiDateTo = monthEndDate;
+                }
+
+                apiDateFrom = new Date(Math.max(apiDateFrom, startDate));
+                apiDateTo = new Date(Math.min(apiDateTo, endDate));
+
+                console.log("apiDateFrom (before ISO):", apiDateFrom);
+                console.log("apiDateTo (before ISO):", apiDateTo);
+
+
+                const apiDateFromISO = apiDateFrom.toISOString().split('T')[0] + "T00%3A00%3A00Z";
+                const apiDateToISO = apiDateTo.toISOString().split('T')[0] + "T23%3A59%3A59Z";
+
+                console.log("apiDateFromISO:", apiDateFromISO);
+                console.log("apiDateToISO:", apiDateToISO);
+
+
+                const apiUrl = `https://api.one-digitalservice.ch/v1/reports/cards/${cardId}/transactions?stateType=unknown&offset=0&pagesize=100&dateFrom=${apiDateFromISO}&dateTo=${apiDateToISO}`;
+                console.log("API URL:", apiUrl);
+
+                const row = linkTableBody.insertRow();
+                const monthCell = row.insertCell();
+                const linkCell = row.insertCell();
+
+                const monthName = monthStartDate.toLocaleString('default', { month: 'long' });
+                monthCell.textContent = `${monthName} ${year}`;
+                linkCell.innerHTML = `<a href="${apiUrl}" target="_blank">Link</a>`;
+
+                currentDate.setUTCMonth(currentDate.getUTCMonth() + 1);
+                currentDate.setUTCDate(1);
+                console.log("currentDate (after month increment):", currentDate);
+                console.log("----------------------");
+            }
+        }
+    </script>
+</body>
+</html>
